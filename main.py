@@ -19,11 +19,9 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 
 ROLE_FILE = "role_id.json"
 
-
 def save_role_id(role_id):
     with open(ROLE_FILE, "w", encoding="utf-8") as f:
         json.dump({"role_id": role_id}, f, indent=4)
-
 
 def get_role_id():
     if not os.path.exists(ROLE_FILE):
@@ -35,19 +33,17 @@ def get_role_id():
     except Exception:
         return None
 
-
 @bot.event
 async def on_ready():
     print(f"Bot online: {bot.user}")
-    try:
-        await bot.tree.sync()
-        print("Comandos sincronizados.")
-    except Exception as e:
-        print(f"Erro ao sincronizar comandos: {e}")
-
+    await bot.tree.sync()
 
 @bot.event
-async def on_member_update(before: discord.Member, after: discord.Member):
+async def on_member_update(before, after):
+    print("ANTES:", before.premium_since)
+    print("DEPOIS:", after.premium_since)
+    print("MEMBRO:", after.name)
+
     role_id = get_role_id()
     if role_id is None:
         return
@@ -56,7 +52,6 @@ async def on_member_update(before: discord.Member, after: discord.Member):
     if role is None:
         return
 
-    # Usuário começou a boostar
     if before.premium_since is None and after.premium_since is not None:
         if role not in after.roles:
             await after.add_roles(role)
@@ -64,14 +59,12 @@ async def on_member_update(before: discord.Member, after: discord.Member):
         if canal:
             await canal.send(f"{after.mention} começou a boostar e ganhou {role.mention}")
 
-    # Usuário parou de boostar
     if before.premium_since is not None and after.premium_since is None:
         if role in after.roles:
             await after.remove_roles(role)
         canal = after.guild.system_channel
         if canal:
             await canal.send(f"{after.mention} parou de boostar e perdeu {role.mention}")
-
 
 @bot.tree.command(name="configurar", description="Configura o cargo de Double Booster")
 @app_commands.default_permissions(administrator=True)
@@ -104,22 +97,11 @@ async def configurar(interaction: discord.Interaction):
         content=f"✅ Configuração concluída.\nCargo: {role.mention}\nCanal: {canal.mention}"
     )
 
-
-@bot.command()
-@commands.is_owner()
-async def sync(ctx):
-    await bot.tree.sync()
-    await ctx.send("Comandos sincronizados.")
-
-
 async def main():
     token = os.getenv("DISCORD_TOKEN")
     if not token:
         raise RuntimeError("Crie um arquivo .env com DISCORD_TOKEN=SEU_TOKEN")
-
     async with bot:
         await bot.start(token)
 
-
-if __name__ == "__main__":
-    asyncio.run(main())
+asyncio.run(main())
